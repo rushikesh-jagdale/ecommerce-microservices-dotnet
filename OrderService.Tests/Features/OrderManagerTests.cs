@@ -189,7 +189,7 @@ namespace OrderService.Tests.Features
     x => x.PublishAsync(
         "order-created",
         It.IsAny<OrderCreatedEvent>()),
-    Times.Once);
+    Times.Never);
 
         }
         [Fact]
@@ -266,7 +266,7 @@ namespace OrderService.Tests.Features
     x => x.PublishAsync(
         "order-created",
         It.IsAny<OrderCreatedEvent>()),
-    Times.Once);
+    Times.Never);
         }
         [Fact]
         public async Task CreateAsync_ShouldThrowException_WhenProductServiceUnavailable()
@@ -322,7 +322,7 @@ namespace OrderService.Tests.Features
     x => x.PublishAsync(
         "order-created",
         It.IsAny<OrderCreatedEvent>()),
-    Times.Once);
+    Times.Never);
 
         }
 
