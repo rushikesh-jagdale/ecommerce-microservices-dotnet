@@ -1,0 +1,155 @@
+version: '3.9'
+
+services:
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ecommerce-sql
+
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "YourStrong@Passw0rd"
+
+    ports:
+      - "1433:1433"
+
+    volumes:
+      - sql-data:/var/opt/mssql
+
+    restart: unless-stopped
+
+# ---------------- Redis ----------------
+
+  redis:
+    image: redis:latest
+
+    container_name: ecommerce-redis
+
+    ports:
+      - "6379:6379"
+
+    restart: unless-stopped
+
+# ---------------- RabbitMQ ----------------
+
+  rabbitmq:
+    image: rabbitmq:3-management
+
+    container_name: ecommerce-rabbitmq
+
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+    restart: unless-stopped
+
+# ---------------- User Service ----------------
+
+  userservice:
+
+    build:
+      context: .
+      dockerfile: UserService.Api/Dockerfile
+
+    container_name: userservice
+
+    depends_on:
+      - sqlserver
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "7001:8080"
+
+    restart: unless-stopped
+
+# ---------------- Product Service ----------------
+
+  productservice:
+
+    build:
+      context: .
+      dockerfile: ProductService.Api/Dockerfile
+
+    container_name: productservice
+
+    depends_on:
+      - sqlserver
+      - redis
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "7002:8080"
+
+    restart: unless-stopped
+
+# ---------------- Order Service ----------------
+
+  orderservice:
+
+    build:
+      context: .
+      dockerfile: OrderService.Api/Dockerfile
+
+    depends_on:
+      - sqlserver
+      - rabbitmq
+      - productservice
+
+    container_name: orderservice
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "7003:8080"
+
+    restart: unless-stopped
+
+# ---------------- Worker ----------------
+
+  worker:
+
+    build:
+      context: .
+      dockerfile: OrderProcessor.Worker/Dockerfile
+
+    container_name: order-worker
+
+    depends_on:
+      - rabbitmq
+
+    environment:
+      DOTNET_ENVIRONMENT: Docker
+      
+    restart: unless-stopped
+
+# ---------------- Gateway ----------------
+
+  gateway:
+
+    build:
+      context: .
+      dockerfile: ApiGateway/Dockerfile
+
+    container_name: gateway
+
+    depends_on:
+      - userservice
+      - productservice
+      - orderservice
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Docker
+      ASPNETCORE_URLS: http://+:8080
+    ports:
+      - "7000:8080"
+
+    restart: unless-stopped
+
+volumes:
+
+  sql-data:
