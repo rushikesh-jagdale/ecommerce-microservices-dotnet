@@ -1,19 +1,19 @@
 using Mapster;
 using MapsterMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Serilog;
 using System.Text;
+using System.Text.Json;
 using UserService.Api.Middleware;
 using UserService.Application.Features.Auth;
 using UserService.Application.Interfaces;
 using UserService.Application.Mapping;
 using UserService.Infrastructure.Persistence;
 using UserService.Infrastructure.Repositories;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using System.Text.Json;
-using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,23 +22,23 @@ builder.Host.UseSerilog((context, configuration) =>
     configuration.ReadFrom.Configuration(context.Configuration);
 });
 
-// Add services to the container.
+var connectionString =
+    Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
 builder.Services.AddDbContext<UserDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<AuthService>();
 
 builder.Services.AddSingleton(TypeAdapterConfig.GlobalSettings);
-
 builder.Services.AddScoped<IMapper, ServiceMapper>();
 
 builder.Services.AddControllers();
 
 builder.Services.AddHealthChecks()
-    .AddDbContextCheck<UserDbContext>(
-        "SQL Server");
+    .AddDbContextCheck<UserDbContext>("PostgreSQL");
 
 builder.Services.AddEndpointsApiExplorer();
 
@@ -56,8 +56,7 @@ builder.Services.AddSwaggerGen(options =>
         Type = SecuritySchemeType.Http,
         Scheme = "bearer",
         BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "Enter token like: Bearer {your JWT token}"
+        In = ParameterLocation.Header
     });
 
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -77,25 +76,22 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+.AddJwtBearer(options =>
+{
+    var key = Encoding.UTF8.GetBytes(Environment.GetEnvironmentVariable("Jwt__Key")
+    ?? builder.Configuration["Jwt:Key"]!);
+
+    options.TokenValidationParameters = new()
     {
-        var key = Encoding.UTF8.GetBytes(
-            builder.Configuration["Jwt:Key"]!);
-
-        options.TokenValidationParameters =
-            new TokenValidationParameters
-            {
-                ValidateIssuer = true,
-                ValidateAudience = true,
-                ValidateLifetime = true,
-                ValidateIssuerSigningKey = true,
-
-                ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                ValidAudience = builder.Configuration["Jwt:Audience"],
-
-                IssuerSigningKey = new SymmetricSecurityKey(key)
-            };
-    });
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+        ValidAudience = builder.Configuration["Jwt:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(key)
+    };
+});
 
 MapsterConfig.RegisterMappings();
 
@@ -109,10 +105,13 @@ for (int retry = 0; retry < 10; retry++)
     {
         using var scope = app.Services.CreateScope();
 
-        var db = scope.ServiceProvider
-            .GetRequiredService<UserDbContext>();
+        var db = scope.ServiceProvider.GetRequiredService<UserDbContext>();
 
         db.Database.Migrate();
+
+        var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+        await UserDbSeeder.SeedAdminAsync(db, configuration);
 
         Log.Information("Database migration successful.");
 
@@ -120,29 +119,13 @@ for (int retry = 0; retry < 10; retry++)
     }
     catch (Exception ex)
     {
-        Log.Warning(ex,
-            "Database not ready. Retrying...");
-
+        Log.Warning(ex, "Database not ready. Retrying...");
         Thread.Sleep(5000);
     }
 }
 
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider
-        .GetRequiredService<UserDbContext>();
-
-    var configuration = scope.ServiceProvider
-        .GetRequiredService<IConfiguration>();
-
-    await UserDbSeeder.SeedAdminAsync(context, configuration);
-}
-
-// Configure the HTTP request pipeline.
-
-    app.UseSwagger();
-    app.UseSwaggerUI();
-
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseMiddleware<ExceptionMiddleware>();
 
@@ -162,26 +145,15 @@ app.MapHealthChecks("/health", new HealthCheckOptions
     {
         context.Response.ContentType = "application/json";
 
-        var response = new
+        await context.Response.WriteAsync(JsonSerializer.Serialize(new
         {
             Status = report.Status.ToString(),
-
             Checks = report.Entries.Select(x => new
             {
                 Name = x.Key,
-                Status = x.Value.Status.ToString(),
-                Description = x.Value.Description
-            }),
-
-            TotalDuration = report.TotalDuration
-        };
-
-        await context.Response.WriteAsync(
-            JsonSerializer.Serialize(response,
-            new JsonSerializerOptions
-            {
-                WriteIndented = true
-            }));
+                Status = x.Value.Status.ToString()
+            })
+        }));
     }
 });
 

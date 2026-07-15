@@ -36,9 +36,14 @@ public class OrderCreatedConsumer : BackgroundService
         {
             try
             {
+                var rabbitMqHost =
+                    Environment.GetEnvironmentVariable("RabbitMQ__Host")
+                    ?? _configuration["RabbitMQ:Host"];
+
                 var factory = new ConnectionFactory
                 {
-                    HostName = _configuration["RabbitMQ:Host"]
+                    HostName = rabbitMqHost,
+                    DispatchConsumersAsync = false
                 };
 
                 connection = factory.CreateConnection();

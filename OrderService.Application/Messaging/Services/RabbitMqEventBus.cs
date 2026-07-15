@@ -13,9 +13,13 @@ public class RabbitMqEventBus : IEventBus
 
     public RabbitMqEventBus(IConfiguration configuration)
     {
+        var rabbitMqHost =
+            Environment.GetEnvironmentVariable("RabbitMQ__Host")
+            ?? configuration["RabbitMQ:Host"];
+
         var factory = new ConnectionFactory
         {
-            HostName = configuration["RabbitMQ:Host"]
+            HostName = rabbitMqHost
         };
 
         const int maxRetries = 10;

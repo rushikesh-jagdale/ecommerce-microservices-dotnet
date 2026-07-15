@@ -16,6 +16,7 @@ using Serilog;
 using Microsoft.Extensions.Caching.Distributed;
 
 
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog((context, configuration) =>
@@ -23,9 +24,12 @@ builder.Host.UseSerilog((context, configuration) =>
     configuration.ReadFrom.Configuration(context.Configuration);
 });
 
+var connectionString =
+    Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
 builder.Services.AddDbContext<ProductDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
@@ -34,7 +38,8 @@ builder.Services.AddScoped<ProductManager>();
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration =
-        builder.Configuration["Redis:ConnectionString"];
+    Environment.GetEnvironmentVariable("Redis__ConnectionString")
+    ?? builder.Configuration["Redis:ConnectionString"];
 });
 
 builder.Services.AddSingleton(TypeAdapterConfig.GlobalSettings);
@@ -48,14 +53,14 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<ProductDbContext>(
-        "SQL Server");
+        "PostgreSQL");
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "User Service API",
+        Title = "Product Service API",
         Version = "v1"
     });
 
@@ -90,7 +95,8 @@ builder.Services.AddAuthentication(
     .AddJwtBearer(options =>
     {
         var key = Encoding.UTF8.GetBytes(
-            builder.Configuration["Jwt:Key"]!);
+            Environment.GetEnvironmentVariable("Jwt__Key")
+    ?? builder.Configuration["Jwt:Key"]!);
 
         options.TokenValidationParameters =
             new TokenValidationParameters

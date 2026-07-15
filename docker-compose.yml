@@ -2,19 +2,23 @@ version: '3.9'
 
 services:
 
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: ecommerce-sql
+# ---------------- PostgreSQL ----------------
+
+  postgres:
+    image: postgres:16
+
+    container_name: ecommerce-postgres
 
     environment:
-      ACCEPT_EULA: "Y"
-      SA_PASSWORD: "YourStrong@Passw0rd"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: ecommerce
 
     ports:
-      - "1433:1433"
+      - "5432:5432"
 
     volumes:
-      - sql-data:/var/opt/mssql
+      - postgres-data:/var/lib/postgresql/data
 
     restart: unless-stopped
 
@@ -54,11 +58,12 @@ services:
     container_name: userservice
 
     depends_on:
-      - sqlserver
+      - postgres
 
     environment:
       ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://+:8080
+
     ports:
       - "7001:8080"
 
@@ -75,12 +80,13 @@ services:
     container_name: productservice
 
     depends_on:
-      - sqlserver
+      - postgres
       - redis
 
     environment:
       ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://+:8080
+
     ports:
       - "7002:8080"
 
@@ -94,16 +100,17 @@ services:
       context: .
       dockerfile: OrderService.Api/Dockerfile
 
+    container_name: orderservice
+
     depends_on:
-      - sqlserver
+      - postgres
       - rabbitmq
       - productservice
-
-    container_name: orderservice
 
     environment:
       ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://+:8080
+
     ports:
       - "7003:8080"
 
@@ -121,10 +128,11 @@ services:
 
     depends_on:
       - rabbitmq
+      - postgres
 
     environment:
       DOTNET_ENVIRONMENT: Docker
-      
+
     restart: unless-stopped
 
 # ---------------- Gateway ----------------
@@ -145,6 +153,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Docker
       ASPNETCORE_URLS: http://+:8080
+
     ports:
       - "7000:8080"
 
@@ -152,4 +161,4 @@ services:
 
 volumes:
 
-  sql-data:
+  postgres-data:

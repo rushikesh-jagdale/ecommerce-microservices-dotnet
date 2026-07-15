@@ -28,9 +28,12 @@ builder.Host.UseSerilog((context, configuration) =>
     configuration.ReadFrom.Configuration(context.Configuration);
 });
 
+var connectionString =
+    Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
 builder.Services.AddDbContext<OrderDbContext>(options =>
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 
@@ -48,7 +51,8 @@ builder.Services.AddHttpClient<IProductServiceClient, ProductServiceClient>(clie
 
     client.BaseAddress = new Uri(
 
-    builder.Configuration["ProductService:BaseUrl"]!);
+    Environment.GetEnvironmentVariable("ProductService__BaseUrl")
+    ?? builder.Configuration["ProductService:BaseUrl"]!);
 
 })
 
@@ -84,7 +88,7 @@ builder.Services.AddControllers()
 
 builder.Services.AddHealthChecks()
     .AddDbContextCheck<OrderDbContext>(
-        "SQL Server");
+        "PostgreSQL");
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -92,7 +96,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "User Service API",
+        Title = "Order Service API",
         Version = "v1"
     });
 
@@ -127,7 +131,8 @@ builder.Services.AddAuthentication(
     .AddJwtBearer(options =>
     {
         var key = Encoding.UTF8.GetBytes(
-            builder.Configuration["Jwt:Key"]!);
+            Environment.GetEnvironmentVariable("Jwt__Key")
+    ?? builder.Configuration["Jwt:Key"]!);
 
         options.TokenValidationParameters =
             new TokenValidationParameters
