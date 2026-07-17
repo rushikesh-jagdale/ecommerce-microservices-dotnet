@@ -13,14 +13,43 @@ public class RabbitMqEventBus : IEventBus
 
     public RabbitMqEventBus(IConfiguration configuration)
     {
-        var rabbitMqHost =
+        var host =
             Environment.GetEnvironmentVariable("RabbitMQ__Host")
             ?? configuration["RabbitMQ:Host"];
 
+        var username =
+            Environment.GetEnvironmentVariable("RabbitMQ__Username")
+            ?? configuration["RabbitMQ:Username"];
+
+        var password =
+            Environment.GetEnvironmentVariable("RabbitMQ__Password")
+            ?? configuration["RabbitMQ:Password"];
+
+        var virtualHost =
+            Environment.GetEnvironmentVariable("RabbitMQ__VirtualHost")
+            ?? configuration["RabbitMQ:VirtualHost"];
+
+        var port = int.Parse(
+            Environment.GetEnvironmentVariable("RabbitMQ__Port")
+            ?? configuration["RabbitMQ:Port"]
+            ?? "5672");
+
         var factory = new ConnectionFactory
         {
-            HostName = rabbitMqHost
+            HostName = host,
+            UserName = username,
+            Password = password,
+            VirtualHost = virtualHost,
+            Port = port,
+            DispatchConsumersAsync = false
         };
+
+        // Enable SSL only for CloudAMQP
+        if (!string.Equals(host, "rabbitmq", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase))
+        {
+            factory.Ssl.Enabled = true;
+        }
 
         const int maxRetries = 10;
         const int delaySeconds = 5;
