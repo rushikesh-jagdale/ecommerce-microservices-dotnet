@@ -60,19 +60,26 @@ namespace ProductService.Application.Features.Products
         {
             var cacheKey = $"product:{id}";
 
-            // Check Redis
-            var cachedProduct = await _cache.GetStringAsync(cacheKey);
-
-            if (!string.IsNullOrEmpty(cachedProduct))
+            // Try Redis first
+            try
             {
-                Log.Information("Cache HIT for {CacheKey}", cacheKey);
+                var cachedProduct = await _cache.GetStringAsync(cacheKey);
 
-                return JsonSerializer.Deserialize<ProductResponse>(cachedProduct);
+                if (!string.IsNullOrEmpty(cachedProduct))
+                {
+                    Log.Information("Cache HIT for {CacheKey}", cacheKey);
+
+                    return JsonSerializer.Deserialize<ProductResponse>(cachedProduct);
+                }
+
+                Log.Information("Cache MISS for {CacheKey}", cacheKey);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Redis unavailable. Falling back to PostgreSQL.");
             }
 
-            Log.Information("Cache MISS for {CacheKey}", cacheKey);
-
-            // Read from SQL
+            // Always fallback to PostgreSQL
             var product = await _productRepository.GetByIdAsync(id);
 
             if (product == null)
@@ -80,16 +87,23 @@ namespace ProductService.Application.Features.Products
 
             var response = _mapper.Map<ProductResponse>(product);
 
-            // Save to Redis
-            await _cache.SetStringAsync(
-                cacheKey,
-                JsonSerializer.Serialize(response),
-                new DistributedCacheEntryOptions
-                {
-                    AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
-                });
+            // Try writing to Redis
+            try
+            {
+                await _cache.SetStringAsync(
+                    cacheKey,
+                    JsonSerializer.Serialize(response),
+                    new DistributedCacheEntryOptions
+                    {
+                        AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
+                    });
 
-            Log.Information("Product cached with key {CacheKey}", cacheKey);
+                Log.Information("Product cached with key {CacheKey}", cacheKey);
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Unable to cache product in Redis.");
+            }
 
             return response;
         }
@@ -142,7 +156,14 @@ namespace ProductService.Application.Features.Products
 
             await _productRepository.UpdateAsync(product);
 
-            await _cache.RemoveAsync($"product:{id}");
+            try
+            {
+                await _cache.RemoveAsync($"product:{id}");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Unable to remove cache.");
+            }
 
             Log.Information("Cache removed for product:{ProductId}", id);
 
@@ -158,7 +179,14 @@ namespace ProductService.Application.Features.Products
 
             await _productRepository.DeleteAsync(product);
 
-            await _cache.RemoveAsync($"product:{id}");
+            try
+            {
+                await _cache.RemoveAsync($"product:{id}");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Unable to remove cache.");
+            }
 
             Log.Information("Cache removed for product:{ProductId}", id);
 

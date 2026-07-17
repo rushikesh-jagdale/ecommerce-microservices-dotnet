@@ -35,12 +35,23 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 
 builder.Services.AddScoped<ProductManager>();
 
-builder.Services.AddStackExchangeRedisCache(options =>
-{
-    options.Configuration =
+var redisConnection =
     Environment.GetEnvironmentVariable("Redis__ConnectionString")
     ?? builder.Configuration["Redis:ConnectionString"];
-});
+
+if (!string.IsNullOrWhiteSpace(redisConnection))
+{
+    builder.Services.AddStackExchangeRedisCache(options =>
+    {
+        options.Configuration = redisConnection;
+    });
+
+    Log.Information("Redis Enabled");
+}
+else
+{
+    Log.Warning("Redis Disabled");
+}
 
 builder.Services.AddSingleton(TypeAdapterConfig.GlobalSettings);
 
