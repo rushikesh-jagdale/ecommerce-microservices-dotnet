@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using System.Net.Security;
+using System.Security.Authentication;
+using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -50,7 +52,7 @@ public class OrderCreatedConsumer : BackgroundService
                 var port = int.Parse(
                     Environment.GetEnvironmentVariable("RabbitMQ__Port")
                     ?? _configuration["RabbitMQ:Port"]
-                    ?? "5672");
+                    ?? "5671");
 
                 var factory = new ConnectionFactory
                 {
@@ -66,7 +68,14 @@ public class OrderCreatedConsumer : BackgroundService
                 if (!string.Equals(host, "rabbitmq", StringComparison.OrdinalIgnoreCase)
                     && !string.Equals(host, "localhost", StringComparison.OrdinalIgnoreCase))
                 {
-                    factory.Ssl.Enabled = true;
+                    factory.Ssl = new SslOption
+                    {
+                        Enabled = true,
+                        Version = SslProtocols.Tls12,
+                        AcceptablePolicyErrors =
+                            SslPolicyErrors.RemoteCertificateChainErrors |
+                            SslPolicyErrors.RemoteCertificateNameMismatch
+                    };
                 }
 
                 connection = factory.CreateConnection();
