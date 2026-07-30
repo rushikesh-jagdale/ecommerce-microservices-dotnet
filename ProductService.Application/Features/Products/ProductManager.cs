@@ -15,20 +15,19 @@ namespace ProductService.Application.Features.Products
     {
         private readonly IProductRepository _productRepository;
         private readonly IMapper _mapper;
-        private readonly IDistributedCache _cache;
+        private readonly IDistributedCache? _cache;
 
         public ProductManager(
-    IProductRepository productRepository,
-    IMapper mapper,
-    IDistributedCache cache)
+            IProductRepository productRepository,
+            IMapper mapper,
+            IDistributedCache? cache = null)
         {
             _productRepository = productRepository;
             _mapper = mapper;
             _cache = cache;
         }
 
-        public async Task<ProductResponse> CreateAsync(
-            CreateProductRequest request)
+        public async Task<ProductResponse> CreateAsync(CreateProductRequest request)
         {
             var product = _mapper.Map<Product>(request);
             product.Id = Guid.NewGuid();
@@ -38,9 +37,7 @@ namespace ProductService.Application.Features.Products
             return _mapper.Map<ProductResponse>(product);
         }
 
-        // Updated
-        public async Task<PagedResponse<ProductResponse>> GetAllAsync(
-    ProductQueryParameters query)
+        public async Task<PagedResponse<ProductResponse>> GetAllAsync(ProductQueryParameters query)
         {
             var result = await _productRepository.GetAllAsync(query);
 
@@ -51,8 +48,7 @@ namespace ProductService.Application.Features.Products
                 Items = items,
                 Page = query.Page,
                 PageSize = query.PageSize,
-                TotalCount = result.TotalCount,
-                
+                TotalCount = result.TotalCount
             };
         }
 
@@ -60,26 +56,29 @@ namespace ProductService.Application.Features.Products
         {
             var cacheKey = $"product:{id}";
 
-            // Try Redis first
-            try
+            // Try Redis
+            if (_cache != null)
             {
-                var cachedProduct = await _cache.GetStringAsync(cacheKey);
-
-                if (!string.IsNullOrEmpty(cachedProduct))
+                try
                 {
-                    Log.Information("Cache HIT for {CacheKey}", cacheKey);
+                    var cachedProduct = await _cache.GetStringAsync(cacheKey);
 
-                    return JsonSerializer.Deserialize<ProductResponse>(cachedProduct);
+                    if (!string.IsNullOrEmpty(cachedProduct))
+                    {
+                        Log.Information("Cache HIT for {CacheKey}", cacheKey);
+
+                        return JsonSerializer.Deserialize<ProductResponse>(cachedProduct);
+                    }
+
+                    Log.Information("Cache MISS for {CacheKey}", cacheKey);
                 }
-
-                Log.Information("Cache MISS for {CacheKey}", cacheKey);
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Redis unavailable. Falling back to PostgreSQL.");
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Redis unavailable. Falling back to PostgreSQL.");
+                }
             }
 
-            // Always fallback to PostgreSQL
+            // PostgreSQL
             var product = await _productRepository.GetByIdAsync(id);
 
             if (product == null)
@@ -87,30 +86,31 @@ namespace ProductService.Application.Features.Products
 
             var response = _mapper.Map<ProductResponse>(product);
 
-            // Try writing to Redis
-            try
+            // Store in Redis
+            if (_cache != null)
             {
-                await _cache.SetStringAsync(
-                    cacheKey,
-                    JsonSerializer.Serialize(response),
-                    new DistributedCacheEntryOptions
-                    {
-                        AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
-                    });
+                try
+                {
+                    await _cache.SetStringAsync(
+                        cacheKey,
+                        JsonSerializer.Serialize(response),
+                        new DistributedCacheEntryOptions
+                        {
+                            AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
+                        });
 
-                Log.Information("Product cached with key {CacheKey}", cacheKey);
-            }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Unable to cache product in Redis.");
+                    Log.Information("Product cached with key {CacheKey}", cacheKey);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Unable to cache product in Redis.");
+                }
             }
 
             return response;
         }
 
-        public async Task<StockResult> ReduceStockAsync(
-            Guid productId,
-            int quantity)
+        public async Task<StockResult> ReduceStockAsync(Guid productId, int quantity)
         {
             var product = await _productRepository.GetByIdAsync(productId);
 
@@ -143,9 +143,7 @@ namespace ProductService.Application.Features.Products
             };
         }
 
-        public async Task<ProductResponse?> UpdateAsync(
-            Guid id,
-            UpdateProductRequest request)
+        public async Task<ProductResponse?> UpdateAsync(Guid id, UpdateProductRequest request)
         {
             var product = await _productRepository.GetByIdAsync(id);
 
@@ -156,16 +154,18 @@ namespace ProductService.Application.Features.Products
 
             await _productRepository.UpdateAsync(product);
 
-            try
+            if (_cache != null)
             {
-                await _cache.RemoveAsync($"product:{id}");
+                try
+                {
+                    await _cache.RemoveAsync($"product:{id}");
+                    Log.Information("Cache removed for product:{ProductId}", id);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Unable to remove cache.");
+                }
             }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Unable to remove cache.");
-            }
-
-            Log.Information("Cache removed for product:{ProductId}", id);
 
             return _mapper.Map<ProductResponse>(product);
         }
@@ -179,16 +179,18 @@ namespace ProductService.Application.Features.Products
 
             await _productRepository.DeleteAsync(product);
 
-            try
+            if (_cache != null)
             {
-                await _cache.RemoveAsync($"product:{id}");
+                try
+                {
+                    await _cache.RemoveAsync($"product:{id}");
+                    Log.Information("Cache removed for product:{ProductId}", id);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "Unable to remove cache.");
+                }
             }
-            catch (Exception ex)
-            {
-                Log.Warning(ex, "Unable to remove cache.");
-            }
-
-            Log.Information("Cache removed for product:{ProductId}", id);
 
             return true;
         }
