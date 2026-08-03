@@ -39,6 +39,9 @@ var redisConnection =
     Environment.GetEnvironmentVariable("Redis__ConnectionString")
     ?? builder.Configuration["Redis:ConnectionString"];
 
+Log.Information("Redis Connection String Exists: {Exists}",
+    !string.IsNullOrWhiteSpace(redisConnection));
+
 if (!string.IsNullOrWhiteSpace(redisConnection))
 {
     builder.Services.AddStackExchangeRedisCache(options =>
