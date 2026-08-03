@@ -42,6 +42,8 @@ var redisConnection =
 Log.Information("Redis Connection String Exists: {Exists}",
     !string.IsNullOrWhiteSpace(redisConnection));
 
+Console.WriteLine("========== REDIS CONFIG EXECUTED ==========");
+
 if (!string.IsNullOrWhiteSpace(redisConnection))
 {
     builder.Services.AddStackExchangeRedisCache(options =>
@@ -50,10 +52,12 @@ if (!string.IsNullOrWhiteSpace(redisConnection))
     });
 
     Log.Information("Redis Enabled");
+    Console.WriteLine("========== REDIS ENABLED ==========");
 }
 else
 {
     Log.Warning("Redis Disabled");
+    Console.WriteLine("========== REDIS DISABLED ==========");
 }
 
 builder.Services.AddSingleton(TypeAdapterConfig.GlobalSettings);
