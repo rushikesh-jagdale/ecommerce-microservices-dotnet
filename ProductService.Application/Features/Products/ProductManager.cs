@@ -56,21 +56,25 @@ namespace ProductService.Application.Features.Products
         {
             var cacheKey = $"product:{id}";
 
-            // Try Redis
+            // -----------------------
+            // Check Redis
+            // -----------------------
             if (_cache != null)
             {
                 try
                 {
+                    Log.Information("Checking Redis for key {CacheKey}", cacheKey);
+
                     var cachedProduct = await _cache.GetStringAsync(cacheKey);
 
                     if (!string.IsNullOrEmpty(cachedProduct))
                     {
-                        Log.Information("Cache HIT for {CacheKey}", cacheKey);
+                        Log.Information("REDIS CACHE HIT -> {CacheKey}", cacheKey);
 
                         return JsonSerializer.Deserialize<ProductResponse>(cachedProduct);
                     }
 
-                    Log.Information("Cache MISS for {CacheKey}", cacheKey);
+                    Log.Information("REDIS CACHE MISS -> {CacheKey}", cacheKey);
                 }
                 catch (Exception ex)
                 {
@@ -78,15 +82,26 @@ namespace ProductService.Application.Features.Products
                 }
             }
 
+            // -----------------------
             // PostgreSQL
+            // -----------------------
+
+            Log.Information("Reading Product from PostgreSQL");
+
             var product = await _productRepository.GetByIdAsync(id);
 
             if (product == null)
+            {
+                Log.Warning("Product not found in PostgreSQL.");
                 return null;
+            }
 
             var response = _mapper.Map<ProductResponse>(product);
 
-            // Store in Redis
+            // -----------------------
+            // Save to Redis
+            // -----------------------
+
             if (_cache != null)
             {
                 try
@@ -99,11 +114,11 @@ namespace ProductService.Application.Features.Products
                             AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5)
                         });
 
-                    Log.Information("Product cached with key {CacheKey}", cacheKey);
+                    Log.Information("Product saved to Redis -> {CacheKey}", cacheKey);
                 }
                 catch (Exception ex)
                 {
-                    Log.Warning(ex, "Unable to cache product in Redis.");
+                    Log.Warning(ex, "Unable to cache product.");
                 }
             }
 

@@ -1,8 +1,8 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using ProductService.Application.DTOs;
 using ProductService.Application.DTOs.ProductService.Application.DTOs;
 using ProductService.Application.Features.Products;
-using Microsoft.AspNetCore.Authorization;
 
 namespace ProductService.Api.Controllers
 {
@@ -19,26 +19,20 @@ namespace ProductService.Api.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPost]
-        public async Task<IActionResult> Create(
-            CreateProductRequest request)
+        public async Task<IActionResult> Create(CreateProductRequest request)
         {
             var result = await _productService.CreateAsync(request);
-
             return Ok(result);
         }
 
-        // Updated
         [Authorize]
         [HttpGet]
-        public async Task<IActionResult> GetAll(
-            [FromQuery] ProductQueryParameters query)
+        public async Task<IActionResult> GetAll([FromQuery] ProductQueryParameters query)
         {
             var result = await _productService.GetAllAsync(query);
-
             return Ok(result);
         }
 
-        
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(Guid id)
         {
@@ -51,9 +45,7 @@ namespace ProductService.Api.Controllers
         }
 
         [HttpPost("{id}/reduce-stock")]
-        public async Task<IActionResult> ReduceStock(
-            Guid id,
-            [FromQuery] int quantity)
+        public async Task<IActionResult> ReduceStock(Guid id, [FromQuery] int quantity)
         {
             var result = await _productService.ReduceStockAsync(id, quantity);
 
@@ -70,9 +62,7 @@ namespace ProductService.Api.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update(
-            Guid id,
-            UpdateProductRequest request)
+        public async Task<IActionResult> Update(Guid id, UpdateProductRequest request)
         {
             var result = await _productService.UpdateAsync(id, request);
 
