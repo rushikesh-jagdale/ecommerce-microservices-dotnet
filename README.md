@@ -10,7 +10,7 @@
 ![GitHub stars](https://img.shields.io/github/stars/rushikesh-jagdale/ecommerce-microservices-dotnet?style=social)
 ![GitHub last commit](https://img.shields.io/github/last-commit/rushikesh-jagdale/ecommerce-microservices-dotnet)
 
-> > **Production-ready E-Commerce Backend built with ASP.NET Core 8, Clean Architecture, Microservices, Docker, RabbitMQ, Redis, API Gateway (Ocelot), SQL Server (Local Development), PostgreSQL (Cloud), and GitHub Actions CI/CD.**
+> **Production-ready E-Commerce Backend built with ASP.NET Core 8, Clean Architecture, Microservices, Docker, RabbitMQ, Redis, API Gateway (Ocelot), SQL Server (Local Development), PostgreSQL (Cloud), and GitHub Actions CI/CD.**
 
 ## 🌐 Live API Documentation
 
@@ -329,7 +329,7 @@ The platform is deployed on cloud infrastructure using Render, PostgreSQL, and U
 | Order Service | https://orderservice-n9st.onrender.com/swagger/index.html |
 
 ### Deployment Architecture
-
+...
                     Internet
                         │
                         ▼
@@ -349,6 +349,7 @@ The platform is deployed on cloud infrastructure using Render, PostgreSQL, and U
             Upstash Redis Cache
 
           RabbitMQ → Order Worker
+...          
 
 ### 🚀 Deployment Highlights
 
@@ -365,7 +366,7 @@ The platform is deployed on cloud infrastructure using Render, PostgreSQL, and U
 > The Product Service implements the **Cache-Aside Pattern**, where Redis is checked before querying PostgreSQL. On a cache miss, data is retrieved from the database, stored in Redis, and returned to the client. This strategy reduces database load while maintaining data consistency through cache invalidation.
 
 ### Cache Flow
-
+...
                  Client Request
                         │
                         ▼
@@ -382,6 +383,7 @@ The platform is deployed on cloud infrastructure using Render, PostgreSQL, and U
                                    │
                                    ▼
                             Return Response
+...
 
 ### Caching Strategy
 
@@ -408,7 +410,7 @@ This reduces database queries and significantly improves API performance.
 The platform uses **RabbitMQ** to enable **asynchronous, event-driven communication** between microservices. Instead of making direct synchronous calls for background operations, services publish events that are processed independently, resulting in better scalability, resilience, and loose coupling.
 
 ### Event Flow
-
+...
                    Client
                       │
                       ▼
@@ -427,6 +429,8 @@ The platform uses **RabbitMQ** to enable **asynchronous, event-driven communicat
    Background Processing   Future Integrations
                             (Email, Notifications,
                              Inventory, Payments)
+
+...
 
 ### Event Processing Flow
 
