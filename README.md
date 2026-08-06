@@ -329,7 +329,8 @@ The platform is deployed on cloud infrastructure using Render, PostgreSQL, and U
 | Order Service | https://orderservice-n9st.onrender.com/swagger/index.html |
 
 ### Deployment Architecture
-...
+
+```text
                     Internet
                         │
                         ▼
@@ -349,7 +350,7 @@ The platform is deployed on cloud infrastructure using Render, PostgreSQL, and U
             Upstash Redis Cache
 
           RabbitMQ → Order Worker
-...          
+```        
 
 ### 🚀 Deployment Highlights
 
@@ -365,25 +366,24 @@ The platform is deployed on cloud infrastructure using Render, PostgreSQL, and U
 
 > The Product Service implements the **Cache-Aside Pattern**, where Redis is checked before querying PostgreSQL. On a cache miss, data is retrieved from the database, stored in Redis, and returned to the client. This strategy reduces database load while maintaining data consistency through cache invalidation.
 
-### Cache Flow
-...
-                 Client Request
-                        │
-                        ▼
-                 Check Redis Cache
-                 ┌────────┴────────┐
-                 │                 │
-           Cache HIT         Cache MISS
-                 │                 │
-                 ▼                 ▼
-         Return Cached Data   Query PostgreSQL
-                                   │
-                                   ▼
-                           Store Result in Redis
-                                   │
-                                   ▼
-                            Return Response
-...
+```text
+Client Request
+      │
+      ▼
+Check Redis Cache
+┌────────┴────────┐
+│                 │
+Cache HIT     Cache MISS
+│                 │
+▼                 ▼
+Return Cache   Query PostgreSQL
+                    │
+                    ▼
+           Store Result in Redis
+                    │
+                    ▼
+             Return Response
+```
 
 ### Caching Strategy
 
@@ -410,27 +410,29 @@ This reduces database queries and significantly improves API performance.
 The platform uses **RabbitMQ** to enable **asynchronous, event-driven communication** between microservices. Instead of making direct synchronous calls for background operations, services publish events that are processed independently, resulting in better scalability, resilience, and loose coupling.
 
 ### Event Flow
-...
-                   Client
-                      │
-                      ▼
-               Order Service
-                      │
-          Publish OrderCreated Event
-                      │
-                      ▼
-                  RabbitMQ
-                      │
-                      ▼
-          Order Processor Worker
-                      │
-          ┌───────────┴───────────┐
-          ▼                       ▼
-   Background Processing   Future Integrations
-                            (Email, Notifications,
-                             Inventory, Payments)
 
-...
+```text
+Client
+   │
+   ▼
+Order Service
+   │
+Publish OrderCreated Event
+   │
+   ▼
+RabbitMQ
+   │
+   ▼
+Order Processor Worker
+   │
+   ├──────────────► Background Processing
+   │
+   └──────────────► Future Integrations
+                    • Email
+                    • Notifications
+                    • Inventory
+                    • Payments
+```
 
 ### Event Processing Flow
 
