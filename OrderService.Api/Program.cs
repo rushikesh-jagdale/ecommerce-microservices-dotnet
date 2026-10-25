@@ -1,25 +1,26 @@
+using Mapster;
+using MapsterMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using OrderService.Api.Middleware;
 using OrderService.Application.Features.Orders;
 using OrderService.Application.Interfaces;
+using OrderService.Application.Mapping;
+using OrderService.Application.Messaging.Interfaces;
+using OrderService.Application.Messaging.Services;
 using OrderService.Application.Services;
 using OrderService.Infrastructure.Persistence;
 using OrderService.Infrastructure.Repositories;
-using System.Text;
-using System.Text.Json.Serialization;
-using Mapster;
-using MapsterMapper;
-using OrderService.Application.Mapping;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using System.Text.Json;
-using Serilog;
 using Polly;
 using Polly.Extensions.Http;
-using OrderService.Application.Messaging.Interfaces;
-using OrderService.Application.Messaging.Services;
+using Prometheus;
+using Serilog;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -159,6 +160,8 @@ Log.Information("Starting OrderService...");
 
 var app = builder.Build();
 
+app.UseHttpMetrics();
+
 for (int retry = 0; retry < 10; retry++)
 {
     try
@@ -229,6 +232,8 @@ app.MapHealthChecks("/health", new HealthCheckOptions
             }));
     }
 });
+
+app.MapMetrics();
 
 try
 {

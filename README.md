@@ -128,6 +128,10 @@ This repository was built to simulate a real-world backend architecture and serv
 - ASP.NET Core Health Checks
 - PostgreSQL Health Check
 - Service Monitoring Endpoints
+- Prometheus metrics exposed by the User, Product, and Order APIs
+- Grafana dashboard for service health, HTTP request rate, and p95 response time
+- HTTP 5xx error monitoring
+- Docker Compose integration for local observability
 
 ---
 
@@ -1039,6 +1043,56 @@ postgres
        └───────────────────────────────┘
                                        ▼
                           Order Processor Worker
+
+---
+
+## 📊 Local Observability with Prometheus & Grafana
+
+The project includes a local observability setup using Prometheus and Grafana to monitor the User, Product, and Order microservices.
+
+### Architecture
+
+- **Prometheus:** Scrapes application metrics from the three microservices every 15 seconds.
+- **Grafana:** Connects to Prometheus and visualizes the collected metrics through a monitoring dashboard.
+- **Docker Compose:** Runs Prometheus and Grafana alongside the existing local development environment.
+
+### Metrics & Dashboard
+
+The Grafana dashboard includes:
+
+- **Microservices Health:** Shows service availability using Prometheus `up` metrics.
+- **HTTP Request Rate:** Visualizes HTTP request rates by service.
+- **HTTP Response Time (p95):** Tracks the 95th-percentile HTTP request duration.
+- **HTTP 5xx Errors:** Monitors server-error responses over a 15-minute window.
+
+### Run the Monitoring Stack
+
+Start the application and monitoring services:
+
+```bash
+docker compose up -d
+```
+
+Open the local monitoring interfaces:
+
+| Tool | URL |
+|---|---|
+| Prometheus | http://localhost:9090 |
+| Prometheus Targets | http://localhost:9090/targets |
+| Grafana | http://localhost:3000 |
+
+Prometheus scrapes the following internal Docker Compose endpoints:
+
+- `userservice:8080/metrics`
+- `productservice:8080/metrics`
+- `orderservice:8080/metrics`
+
+The monitoring stack is intended for **local development and demonstration**. It does not change the existing Render deployment.
+
+> **Note:** Configure secure Grafana credentials before using this setup beyond a local development environment.
+
+---
+
 ## 🏛️ Design Decisions
 
 This project was designed using industry-standard architectural principles to improve maintainability, scalability, and separation of concerns.
@@ -1158,6 +1212,21 @@ Single entry point using Ocelot API Gateway.
 
 ---
 
+### 📈 Prometheus Monitoring
+
+Prometheus scraping application metrics from the User, Product, and Order services.
+
+![Prometheus Targets](docs/screenshots/prometheus.png)
+
+---
+
+### 📊 Grafana Dashboard
+
+Local monitoring dashboard showing microservices health, HTTP request rate, p95 response time, and HTTP 5xx errors.
+
+![Grafana Dashboard](docs/screenshots/grafana_dashboard.png)
+
+
 ### ⚡ Redis Distributed Cache
 
 Demonstration of Redis Cache MISS followed by Cache HIT.
@@ -1225,8 +1294,6 @@ The project will continue to evolve with additional business capabilities, cloud
 
 ### 📊 Observability
 
-- Prometheus Metrics
-- Grafana Dashboards
 - Distributed Tracing (OpenTelemetry)
 - Centralized Log Aggregation
 

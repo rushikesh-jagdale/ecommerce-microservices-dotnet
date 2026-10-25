@@ -1,8 +1,9 @@
+using ApiGateway.Middleware;
 using Microsoft.OpenApi.Models;
 using MMLib.SwaggerForOcelot.DependencyInjection;
 using Ocelot.DependencyInjection;
 using Ocelot.Middleware;
-using ApiGateway.Middleware;
+using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -31,6 +32,8 @@ builder.Services.AddSwaggerForOcelot(builder.Configuration);
 
 var app = builder.Build();
 
+app.UseHttpMetrics();
+
 app.UseSwagger();
 
 app.UseSwaggerUI();
@@ -43,5 +46,7 @@ app.UseSwaggerForOcelotUI(options =>
 });
 
 await app.UseOcelot();
+
+app.MapMetrics();
 
 app.Run();

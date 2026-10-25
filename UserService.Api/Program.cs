@@ -14,6 +14,7 @@ using UserService.Application.Interfaces;
 using UserService.Application.Mapping;
 using UserService.Infrastructure.Persistence;
 using UserService.Infrastructure.Repositories;
+using Prometheus;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -99,6 +100,8 @@ Log.Information("Starting UserService...");
 
 var app = builder.Build();
 
+app.UseHttpMetrics();
+
 for (int retry = 0; retry < 10; retry++)
 {
     try
@@ -156,6 +159,8 @@ app.MapHealthChecks("/health", new HealthCheckOptions
         }));
     }
 });
+
+app.MapMetrics();
 
 try
 {

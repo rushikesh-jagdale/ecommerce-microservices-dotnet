@@ -1,7 +1,9 @@
 using Mapster;
 using MapsterMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using ProductService.Api.Middleware;
@@ -9,11 +11,10 @@ using ProductService.Application.Features.Products;
 using ProductService.Application.Interfaces;
 using ProductService.Infrastructure.Persistence;
 using ProductService.Infrastructure.Repositories;
-using System.Text;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using System.Text.Json;
+using Prometheus;
 using Serilog;
-using Microsoft.Extensions.Caching.Distributed;
+using System.Text;
+using System.Text.Json;
 
 
 
@@ -140,6 +141,8 @@ Log.Information("Starting ProductService...");
 
 var app = builder.Build();
 
+app.UseHttpMetrics();
+
 for (int retry = 0; retry < 10; retry++)
 {
     try
@@ -209,6 +212,8 @@ app.MapHealthChecks("/health", new HealthCheckOptions
             }));
     }
 });
+
+app.MapMetrics();
 
 try
 {
