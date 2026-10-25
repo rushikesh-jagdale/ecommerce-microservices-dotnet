@@ -1026,6 +1026,7 @@ postgres
 
 ### API Flow
 
+```
                     Client
                        │
                        ▼
@@ -1043,7 +1044,7 @@ postgres
        └───────────────────────────────┘
                                        ▼
                           Order Processor Worker
-
+```
 ---
 
 ## 📊 Local Observability with Prometheus & Grafana
